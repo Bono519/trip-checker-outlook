@@ -170,13 +170,19 @@ document.addEventListener('DOMContentLoaded', () => {
   bindUIEvents();
   setDefaultDatetimes();
 
-  // 等 MSAL library 載入後初始化
-  if (typeof msal !== 'undefined') {
-    initMSAL();
-  } else {
-    showToast('Microsoft 登入服務載入失敗，請確認網路連線', 'error');
-  }
+  // 等待 MSAL library 完全載入（最多等 10 秒）
+  waitForMSAL(0);
 });
+
+function waitForMSAL(attempts) {
+  if (typeof msal !== 'undefined' && msal.PublicClientApplication) {
+    initMSAL();
+  } else if (attempts < 50) {
+    setTimeout(() => waitForMSAL(attempts + 1), 200);
+  } else {
+    showToast('Microsoft 登入服務載入逾時，請重新整理頁面後再試', 'error');
+  }
+}
 
 /* ════════════════════════════════════════
    AUTH UI
