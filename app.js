@@ -63,7 +63,7 @@ function initMSAL() {
     auth: {
       clientId:    CONFIG.CLIENT_ID,
       authority:   `https://login.microsoftonline.com/${CONFIG.TENANT_ID}`,
-      redirectUri: window.location.origin + window.location.pathname,
+      redirectUri: 'https://bono519.github.io/trip-checker-outlook',
     },
     cache: {
       cacheLocation:        'localStorage',
