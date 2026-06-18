@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>出差衝突檢查器（Outlook 版）</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f3460" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon">✈</span>
+      <div>
+        <div class="brand-title">出差衝突檢查器</div>
+        <div class="brand-sub">Outlook · c1552@csd.org.tw</div>
+      </div>
+    </div>
+    <div class="auth-area" id="authArea">
+      <button class="btn btn-outline" id="btnLogin">
+        <span>🔑</span> 登入 Microsoft 帳號
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ MAIN ═══ -->
+<main class="app-main">
+
+  <!-- STEP 0：未登入提示 -->
+  <section class="card card-welcome" id="sectionWelcome">
+    <div class="welcome-icon">📅</div>
+    <h2>請先登入 Microsoft 帳號</h2>
+    <p>系統將讀取您的 Outlook 日曆（c1552@csd.org.tw），分析出差時間是否與現有行程衝突，並可將確認的出差行程直接寫回日曆。</p>
+    <button class="btn btn-primary btn-lg" id="btnLoginWelcome">
+      <span>🔑</span> 使用 Microsoft 帳號登入
+    </button>
+    <div class="welcome-note">
+      <strong>資料說明：</strong>本程式僅讀取您授權的 Outlook 日曆範圍，不儲存任何個人資料至伺服器。所有運算在瀏覽器本機執行。
+    </div>
+  </section>
+
+  <!-- STEP 1：輸入出差資訊 -->
+  <section class="card" id="sectionInput" style="display:none">
+    <div class="section-header">
+      <span class="step-badge">01</span>
+      <h2>填寫出差資訊</h2>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="tripLocation">出差地點 <span class="required">*</span></label>
+        <input type="text" id="tripLocation" placeholder="例：台北市、高雄展覽館" />
+      </div>
+      <div class="form-group">
+        <label for="tripPurpose">出差目的</label>
+        <input type="text" id="tripPurpose" placeholder="例：客戶拜訪、政府審查會議" />
+      </div>
+      <div class="form-group">
+        <label for="tripStart">出發日期與時間 <span class="required">*</span></label>
+        <input type="datetime-local" id="tripStart" />
+      </div>
+      <div class="form-group">
+        <label for="tripEnd">返回日期與時間 <span class="required">*</span></label>
+        <input type="datetime-local" id="tripEnd" />
+      </div>
+      <div class="form-group">
+        <label for="bufferBefore">出發前緩衝（小時）</label>
+        <input type="number" id="bufferBefore" value="2" min="0" max="24" />
+      </div>
+      <div class="form-group">
+        <label for="bufferAfter">返回後緩衝（小時）</label>
+        <input type="number" id="bufferAfter" value="2" min="0" max="24" />
+      </div>
+    </div>
+
+    <!-- 關鍵字設定 -->
+    <div class="keyword-panel">
+      <div class="keyword-header" id="keywordToggle">
+        <span>🔒 不可移動關鍵字設定</span>
+        <button class="btn btn-sm btn-ghost" id="btnToggleKeywords">展開設定</button>
+      </div>
+      <div class="keyword-body" id="keywordBody" style="display:none">
+        <p class="keyword-hint">標題包含以下關鍵字的行程，將自動標記為「不可移動」。</p>
+        <div class="keyword-tags" id="keywordTags"></div>
+        <div class="keyword-add">
+          <input type="text" id="newKeyword" placeholder="新增關鍵字" />
+          <button class="btn btn-sm btn-secondary" id="btnAddKeyword">新增</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary btn-lg" id="btnAnalyze">
+        <span>🔍</span> 開始分析衝突
+      </button>
+    </div>
+  </section>
+
+  <!-- STEP 2：分析結果 -->
+  <section class="card" id="sectionResult" style="display:none">
+    <div class="section-header">
+      <span class="step-badge">02</span>
+      <h2>衝突分析結果</h2>
+      <button class="btn btn-ghost btn-sm" id="btnBackToInput">← 重新輸入</button>
+    </div>
+
+    <!-- 出差摘要 -->
+    <div class="trip-summary" id="tripSummary"></div>
+
+    <!-- 視覺化時間軸 -->
+    <div class="timeline-wrap">
+      <h3 class="sub-title">📊 行程時間軸</h3>
+      <div class="timeline-legend">
+        <span class="legend-item legend-trip">出差區間</span>
+        <span class="legend-item legend-conflict">不可移動衝突</span>
+        <span class="legend-item legend-movable">可移動行程</span>
+        <span class="legend-item legend-free">空檔</span>
+      </div>
+      <div class="timeline-container" id="timelineContainer"></div>
+    </div>
+
+    <!-- 衝突行程列表 -->
+    <div id="conflictSection">
+      <h3 class="sub-title">⚠️ 衝突行程清單</h3>
+      <div id="conflictList"></div>
+    </div>
+
+    <!-- 灰色地帶 -->
+    <div id="graySection">
+      <h3 class="sub-title">🔒 待確認行程（預設不可移動）</h3>
+      <p class="hint-text">以下行程無法自動判斷，預設為不可移動。確認可以移動後請點擊「解鎖」。</p>
+      <div id="grayList"></div>
+    </div>
+
+    <!-- 可移動行程 -->
+    <div id="movableSection">
+      <h3 class="sub-title">🟡 可移動行程</h3>
+      <p class="hint-text">以下行程可調整時間或覆蓋。點擊「修改」直接寫入 Outlook 日曆。</p>
+      <div id="movableList"></div>
+    </div>
+
+    <!-- 空檔推薦 -->
+    <div id="freeSection">
+      <h3 class="sub-title">✅ 建議空檔日期</h3>
+      <p class="hint-text">以下為出差區間內的空白時段，點擊「填入出差行程」直接寫入日曆。</p>
+      <div id="freeList"></div>
+    </div>
+
+    <!-- 匯出 -->
+    <div class="export-bar">
+      <button class="btn btn-secondary" id="btnCopyText">📋 複製摘要</button>
+      <button class="btn btn-secondary" id="btnExportPDF">📄 匯出 PDF</button>
+    </div>
+  </section>
+
+  <!-- 行程寫入 Modal -->
+  <div class="modal-overlay" id="modalOverlay" style="display:none">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalTitle">修改行程</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>行程標題</label>
+          <input type="text" id="modalEventTitle" />
+        </div>
+        <div class="form-group">
+          <label>開始時間</label>
+          <input type="datetime-local" id="modalEventStart" />
+        </div>
+        <div class="form-group">
+          <label>結束時間</label>
+          <input type="datetime-local" id="modalEventEnd" />
+        </div>
+        <div class="form-group">
+          <label>地點</label>
+          <input type="text" id="modalEventLocation" />
+        </div>
+        <div class="modal-note" id="modalNote"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="modalCancel">取消</button>
+        <button class="btn btn-primary" id="modalConfirm">確認寫入日曆</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loadingOverlay" style="display:none">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">讀取日曆中...</div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="app-footer">
+  <span>Trip Conflict Checker · Outlook 版 · bono519 · <a href="https://bono519.github.io" target="_blank">GitHub Pages</a></span>
+</footer>
+
+<!-- MSAL（Microsoft 身份驗證程式庫）-->
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
