@@ -517,3 +517,25 @@ body {
   body { background: white; }
   .card { box-shadow: none; border: 1px solid #ccc; margin-bottom: 1rem; }
 }
+
+/* ICS 版新增樣式 */
+.status-chip {
+  background: var(--navy-light);
+  color: var(--white);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.9rem;
+  border-radius: 100px;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+
+.info-note {
+  background: var(--gray-100);
+  border-left: 4px solid var(--blue-mid);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-bottom: 1.25rem;
+  line-height: 1.6;
+}
